@@ -507,6 +507,52 @@ function teachBlock(b){
   return h('div');
 }
 
+
+/* ---------- Listen (browser text-to-speech) ---------- */
+function plain(html){var d=document.createElement('div');d.innerHTML=html;return (d.textContent||'').replace(/\s+/g,' ').trim();}
+function blockText(b){
+  if(b.h)return plain(b.h)+'. '+plain(b.p);
+  if(b.key)return 'Key idea. '+plain(b.key);
+  if(b.analogy)return 'Think of it like this. '+plain(b.analogy);
+  if(b.example)return 'Real example. '+plain(b.example);
+  if(b.warn)return 'Watch out. '+plain(b.warn);
+  if(b.list)return b.list.map(plain).join('. ');
+  if(b.steps)return b.steps.map(function(x,i){return 'Step '+(i+1)+'. '+plain(x);}).join(' ');
+  if(b.table)return b.table.rows.map(function(r){return r.map(plain).join(', ');}).join('. ');
+  return '';
+}
+function listenBar(lesson,hookEl,blockEls){
+  var wrap=h('div',{class:'card',style:'display:flex;flex-wrap:wrap;gap:10px;align-items:center'});
+  if(!('speechSynthesis' in window)){wrap.appendChild(h('span',{class:'muted small'},'Listening is not supported in this browser. You can still read the lesson below.'));return wrap;}
+  var synth=window.speechSynthesis,texts=[plain(lesson.title)+'. '+plain(lesson.hook)],els=[hookEl];
+  lesson.teach.forEach(function(b,i){var t=blockText(b);if(t){texts.push(t);els.push(blockEls[i]);}});
+  var idx=0,playing=false,paused=false,gen=0;
+  var play=h('button',{class:'btn',onclick:toggle},'🔊 Listen to this lesson');
+  var stop=h('button',{class:'btn ghost',onclick:halt,hidden:true},'Stop');
+  var spd=h('select',{'aria-label':'Speed',style:'padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)'});
+  [['0.85','Slower'],['1','Normal'],['1.2','Faster']].forEach(function(o,i){spd.appendChild(h('option',{value:o[0],selected:i===1},o[1]));});
+  wrap.appendChild(play);wrap.appendChild(stop);wrap.appendChild(spd);
+  wrap.appendChild(h('span',{class:'muted small'},'Uses your device\u2019s own voice. The sound differs on each device.'));
+  function voice(){var v=synth.getVoices();return v.filter(function(x){return /en[-_]GB/i.test(x.lang);})[0]||v.filter(function(x){return /^en/i.test(x.lang);})[0]||null;}
+  function mark(i){els.forEach(function(e,k){if(e)e.style.outline=(k===i?'3px solid var(--accent)':'');});if(els[i]&&els[i].scrollIntoView)try{els[i].scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}}
+  function say(){
+    if(idx>=texts.length){halt();return;}
+    var my=gen,u=new SpeechSynthesisUtterance(texts[idx]);u.lang='en-GB';var v=voice();if(v)u.voice=v;u.rate=parseFloat(spd.value);
+    u.onend=function(){if(my!==gen)return;idx++;say();};u.onerror=function(){if(my!==gen)return;halt();};
+    mark(idx);synth.speak(u);
+  }
+  function toggle(){
+    if(!playing){synth.cancel();playing=true;paused=false;idx=0;gen++;play.textContent='⏸ Pause';stop.hidden=false;say();}
+    else if(!paused){synth.pause();paused=true;play.textContent='▶ Resume';}
+    else{synth.resume();paused=false;play.textContent='⏸ Pause';}
+  }
+  function halt(){gen++;synth.cancel();playing=false;paused=false;idx=0;play.textContent='🔊 Listen to this lesson';stop.hidden=true;mark(-1);}
+  spd.addEventListener('change',function(){if(playing){var at=idx;gen++;synth.cancel();idx=at;paused=false;play.textContent='⏸ Pause';say();}});
+  window.addEventListener('hashchange',function(){gen++;synth.cancel();});
+  window.addEventListener('pagehide',function(){synth.cancel();});
+  return wrap;
+}
+
 /* ---------- CHAPTER PAGE ---------- */
 function loadScript(src,ok,bad){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.appendChild(s);}
 
@@ -554,8 +600,10 @@ function chapterPage(){
     var idx=c.lessons.indexOf(l);
     main.appendChild(h('div',{class:'eyebrow'},'Lesson '+(idx+1)+' of '+c.lessons.length+' · '+l.minutes+' min'));
     main.appendChild(h('h1',{},l.icon+' '+l.title));
-    main.appendChild(h('div',{class:'hook',html:l.hook}));
-    l.teach.forEach(function(b){main.appendChild(teachBlock(b));});
+    var hookEl=h('div',{class:'hook',html:l.hook}),blockEls=[];
+    var lb=listenBar(l,hookEl,blockEls);
+    main.appendChild(lb);main.appendChild(hookEl);
+    l.teach.forEach(function(b){var be=teachBlock(b);blockEls.push(be);main.appendChild(be);});
     main.appendChild(h('h2',{style:'margin-top:26px'},'Now try it'));
     var actHost=h('div');main.appendChild(actHost);
     var frames=[];
