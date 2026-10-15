@@ -35,6 +35,8 @@ var Store={key:'saih_course_v1',d:null,
   save:function(){try{localStorage.setItem(this.key,JSON.stringify(this.d));}catch(e){}},
   get:function(ch,k){return (this.d.s[ch]||{})[k];},
   best:function(ch,k,f){var c=this.d.s[ch]=this.d.s[ch]||{}; var old=c[k]; if(old===undefined||f>old)c[k]=Math.round(f*1000)/1000; this.save(); return old===undefined?f:Math.max(old,f);},
+  watched:function(ch,lid){return !!((this.d.w||{})[ch]||{})[lid];},
+  setWatched:function(ch,lid){this.d.w=this.d.w||{};var c=this.d.w[ch]=this.d.w[ch]||{};c[lid]=1;this.save();},
   reset:function(){this.d={name:this.d.name||'',s:{}};this.save();},
   setName:function(n){this.d.name=n;this.save();}
 };
@@ -527,7 +529,7 @@ function listenBar(lesson,hookEl,blockEls){
   var synth=window.speechSynthesis,texts=[plain(lesson.title)+'. '+plain(lesson.hook)],els=[hookEl];
   lesson.teach.forEach(function(b,i){var t=blockText(b);if(t){texts.push(t);els.push(blockEls[i]);}});
   var idx=0,playing=false,paused=false,gen=0;
-  var play=h('button',{class:'btn',onclick:toggle},'🔊 Listen to this lesson');
+  var play=h('button',{class:'btn alt',onclick:toggle},'🔊 Read the notes aloud');
   var stop=h('button',{class:'btn ghost',onclick:halt,hidden:true},'Stop');
   var spd=h('select',{'aria-label':'Speed',style:'padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)'});
   [['0.85','Slower'],['1','Normal'],['1.2','Faster']].forEach(function(o,i){spd.appendChild(h('option',{value:o[0],selected:i===1},o[1]));});
@@ -542,11 +544,11 @@ function listenBar(lesson,hookEl,blockEls){
     mark(idx);synth.speak(u);
   }
   function toggle(){
-    if(!playing){synth.cancel();playing=true;paused=false;idx=0;gen++;play.textContent='⏸ Pause';stop.hidden=false;say();}
+    if(!playing){if(window.LessonVideo)LessonVideo.pauseAll&&LessonVideo.pauseAll();synth.cancel();playing=true;paused=false;idx=0;gen++;play.textContent='⏸ Pause';stop.hidden=false;say();}
     else if(!paused){synth.pause();paused=true;play.textContent='▶ Resume';}
     else{synth.resume();paused=false;play.textContent='⏸ Pause';}
   }
-  function halt(){gen++;synth.cancel();playing=false;paused=false;idx=0;play.textContent='🔊 Listen to this lesson';stop.hidden=true;mark(-1);}
+  function halt(){gen++;synth.cancel();playing=false;paused=false;idx=0;play.textContent='🔊 Read the notes aloud';stop.hidden=true;mark(-1);}
   spd.addEventListener('change',function(){if(playing){var at=idx;gen++;synth.cancel();idx=at;paused=false;play.textContent='⏸ Pause';say();}});
   window.addEventListener('hashchange',function(){gen++;synth.cancel();});
   window.addEventListener('pagehide',function(){synth.cancel();});
@@ -558,9 +560,11 @@ function loadScript(src,ok,bad){var s=document.createElement('script');s.src=src
 
 function chapterPage(){
   var num=parseInt(new URLSearchParams(location.search).get('ch'),10)||1;
+  if(CHAPTER_NUMBERS.indexOf(num)<0)num=1;
   var main=document.getElementById('main'),nav=document.getElementById('nav'),ttl=document.getElementById('ttl'),xpEl=document.getElementById('xp');
   var c;
-  loadScript('data/ch0'+num+'.js',function(){c=window.COURSE_DATA[num];if(!c){main.textContent='Chapter not found.';return;}document.title='Chapter '+c.num+': '+c.title;ttl.textContent='Chapter '+c.num+': '+c.title;window.addEventListener('hashchange',route);route();},function(){main.innerHTML='<div class="card">This chapter is not available yet. <a href="index.html">Back to the course home</a>.</div>';});
+  loadScript('data/ch0'+num+'.js',function(){loadScript('data/v0'+num+'.js',start,start);},function(){main.innerHTML='<div class="card">This chapter is not available yet. <a href="index.html">Back to the course home</a>.</div>';});
+  function start(){c=window.COURSE_DATA[num];if(!c){main.textContent='Chapter not found.';return;}document.title='Chapter '+c.num+': '+c.title;ttl.textContent='Chapter '+c.num+': '+c.title;window.addEventListener('hashchange',route);route();}
 
   function chip(){var s=chStats(c);xpEl.textContent=s.xp+' XP · '+pct(s.done/s.total)+'%';}
   function lessonDone(l){return l.activities.every(function(a,i){return Store.get(c.num,l.id+'.'+i)!==undefined;});}
@@ -575,6 +579,7 @@ function chapterPage(){
     var on=nav.querySelector('.on');if(on&&on.scrollIntoView)try{on.scrollIntoView({inline:'center',block:'nearest'});}catch(e){}
   }
   function route(){
+    if(window.LessonVideo)LessonVideo.stopAll();
     var id=(location.hash||'#overview').slice(1);clear(main);window.scrollTo(0,0);
     var l=c.lessons.filter(function(x){return x.id===id;})[0];
     if(l)lessonView(l);else if(id==='quiz')quizView();else if(id==='boss')bossView();else if(id==='gloss')glossView();else overview();
@@ -582,7 +587,7 @@ function chapterPage(){
   }
   function overview(){
     var s=chStats(c),first=null;
-    main.appendChild(h('div',{class:'hero'},h('div',{class:'eyebrow'},c.part),h('h1',{},'Chapter '+c.num+': '+c.title),h('p',{class:'lead'},c.tagline),h('p',{class:'muted'},'About '+c.minutes+' minutes · '+c.lessons.length+' lessons · quiz · boss level')));
+    main.appendChild(h('div',{class:'hero'},h('div',{class:'eyebrow'},c.part),h('h1',{},'Chapter '+c.num+': '+c.title),h('p',{class:'lead'},c.tagline),h('p',{class:'muted'},'About '+c.minutes+' minutes · '+c.lessons.length+' lessons, each with a narrated 3D video · quiz · boss level')));
     if(s.complete)main.appendChild(h('div',{class:'fb good'},h('div',{class:'stars'},stars(s.score)),h('b',{},'Chapter complete. Your score is '+pct(s.score)+'%. '),'Replay any activity to improve it.'));
     else main.appendChild(h('div',{class:'card'},h('div',{class:'row'},h('b',{},'Your progress'),h('span',{class:'muted'},s.done+' of '+s.total+' activities')),h('div',{class:'bar'},h('i',{style:'width:'+pct(s.done/s.total)+'%'}))));
     var ul=h('ul');c.outcomes.forEach(function(o){ul.appendChild(h('li',{html:o}));});
@@ -590,7 +595,7 @@ function chapterPage(){
     var g=h('div',{class:'grid two'});
     c.lessons.forEach(function(l,i){
       var d=lessonDone(l);if(!d&&!first)first='#'+l.id;
-      g.appendChild(h('a',{class:'card chcard',href:'#'+l.id},h('span',{class:'num'},'LESSON '+(i+1)+' · '+l.minutes+' MIN'),h('b',{},l.icon+' '+l.title),h('span',{class:'muted small'},d?'✅ Complete':l.activities.length+' activities')));
+      g.appendChild(h('a',{class:'card chcard',href:'#'+l.id},h('span',{class:'num'},'LESSON '+(i+1)+' · '+l.minutes+' MIN'),h('b',{},l.icon+' '+l.title),h('span',{class:'muted small'},(((window.COURSE_VIDEO||{})[c.num]||{})[l.id]?(Store.watched(c.num,l.id)?'🎬 Video watched · ':'🎬 Video · '):'')+(d?'✅ Complete':l.activities.length+' activities'))));
     });
     main.appendChild(g);
     if(!first)first='#quiz';
@@ -600,6 +605,15 @@ function chapterPage(){
     var idx=c.lessons.indexOf(l);
     main.appendChild(h('div',{class:'eyebrow'},'Lesson '+(idx+1)+' of '+c.lessons.length+' · '+l.minutes+' min'));
     main.appendChild(h('h1',{},l.icon+' '+l.title));
+    var vid=((window.COURSE_VIDEO||{})[c.num]||{})[l.id];
+    var stepsEl=h('div',{class:'lsteps'});
+    function drawSteps(){clear(stepsEl);[[vid?'Watch':null,Store.watched(c.num,l.id)],['Read',Store.watched(c.num,l.id)||!vid],['Try it',lessonDone(l)]].filter(function(x){return x[0];}).forEach(function(x,k){stepsEl.appendChild(h('span',{class:x[1]?'ok':''},(x[1]?'✓ ':(k+1)+'. ')+x[0]));});}
+    drawSteps();main.appendChild(stepsEl);
+    if(vid&&window.LessonVideo&&vid.slides&&vid.slides.length){
+      var vhost=h('div');main.appendChild(vhost);
+      LessonVideo.mount(vhost,{video:vid,watched:Store.watched(c.num,l.id),onWatched:function(){Store.setWatched(c.num,l.id);drawSteps();toast('Video watched ✓');}});
+      main.appendChild(h('h2',{style:'margin-top:22px'},'Lesson notes'));
+    }
     var hookEl=h('div',{class:'hook',html:l.hook}),blockEls=[];
     var lb=listenBar(l,hookEl,blockEls);
     main.appendChild(lb);main.appendChild(hookEl);
@@ -614,7 +628,7 @@ function chapterPage(){
     l.activities.forEach(function(a,i){
       var f=runActivity(actHost,a,{ch:c.num,key:l.id+'.'+i,weight:10,onScored:function(){
         if(frames[i+1])frames[i+1].hidden=false;
-        chip();drawNav(l.id);
+        chip();drawNav(l.id);drawSteps();
         
       }});
       frames.push(f);
@@ -670,6 +684,15 @@ function chapterPage(){
 }
 
 /* ---------- HOME PAGE ---------- */
+var HERO_SCENE={type:'graph',title:'Part I: Strategic Foundations',orbit:0.4,cam:[0,3.6,10],
+  nodes:[{id:'lead',label:'You, the\nhealthcare leader',p:[0,0.3,1.0],c:'cyan',shape:'ico',size:1.25,spin:true,ls:0.9},
+    {id:'c1',label:'1. The AI\nimperative',p:[-4.6,1.5,-0.6],c:'amber',shape:'cyl',size:0.9,ls:0.9},
+    {id:'c2',label:'2. AI\nmaturity',p:[-2.2,3.1,-1.8],c:'violet',shape:'box',size:0.9,ls:0.9},
+    {id:'c3',label:'3. Trust\ninfrastructure',p:[2.2,3.1,-1.8],c:'green',shape:'shield',size:0.9,ls:0.9},
+    {id:'c4',label:'4. Learning\nfrom failure',p:[4.6,1.5,-0.6],c:'red',shape:'sphere',size:0.9,ls:0.9}],
+  links:[['lead','c1'],['lead','c2'],['lead','c3'],['lead','c4']],
+  steps:['all',['lead','c1'],['lead','c2'],['lead','c3'],['lead','c4']]};
+var heroScene=null;
 function homePage(){
   var main=document.getElementById('main');
   window.COURSE_DATA=window.COURSE_DATA||{};
@@ -678,8 +701,22 @@ function homePage(){
   function draw(){
     clear(main);
     var st=allStats();
-    main.appendChild(h('div',{class:'hero'},h('div',{class:'eyebrow'},'Interactive course'),h('h1',{},'Strategic AI Leadership in Healthcare'),
-      h('p',{class:'lead'},'Learn by doing: games, drag-and-drop, puzzles, quizzes and real-life decision scenarios. Based on “A Strategic Guide to AI in Healthcare” by Professor Muthu Ramachandran.'),h('p',{},h('a',{class:'btn',href:'guide.html'},'New here? Read the quick guide'))));
+    if(heroScene){heroScene.dispose();heroScene=null;}
+    var cover=h('img',{class:'cover',src:'assets/cover.png',alt:'Book cover: A Strategic Guide to AI in Healthcare by Muthu Ramachandran'});
+    cover.addEventListener('error',function(){cover.remove();});
+    var heroStage=h('div',{class:'stage herostage',role:'img','aria-label':'Animated 3D map of the four chapters in Part I'});
+    main.appendChild(h('header',{class:'homehero'},
+      h('div',{class:'txt'},cover,h('div',{class:'eyebrow'},'Online course · book companion'),h('h1',{},'Strategic AI Leadership in Healthcare'),
+        h('p',{class:'byline'},'Professor Muthu Ramachandran'),
+        h('p',{class:'lead'},'Short lessons narrated by Sam, your virtual tutor, with live 3D animations and soft background music, followed by games, drag-and-drop, puzzles, quizzes and real-life decision scenarios. Based on “A Strategic Guide to AI in Healthcare”.'),
+        h('p',{},h('a',{class:'btn',href:'guide.html'},'New here? Read the quick guide'))),
+      heroStage));
+    if(window.Scenes){heroScene=Scenes.mount(heroStage,HERO_SCENE);heroScene.auto(true);}
+    main.appendChild(h('div',{class:'how'},
+      h('div',{},h('b',{},'🎬 1. Watch'),h('span',{},'A 2 to 3 minute narrated 3D video opens every lesson. Captions follow every word.')),
+      h('div',{},h('b',{},'📖 2. Read'),h('span',{},'Short lesson notes with real examples. Press “Read the notes aloud” if you prefer to listen.')),
+      h('div',{},h('b',{},'🎮 3. Try it'),h('span',{},'Games and puzzles unlock one after another, so you practise straight away.')),
+      h('div',{},h('b',{},'🏆 4. Quiz and boss level'),h('span',{},'A chapter quiz, then a longer case where you make the leader’s decisions.'))));
     main.appendChild(h('div',{class:'stats'},
       h('div',{class:'stat'},h('b',{},String(st.xp)),'XP earned'),
       h('div',{class:'stat'},h('b',{},st.level),'Your level'),
