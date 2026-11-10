@@ -2,6 +2,9 @@
 (function(){
 'use strict';
 var CHAPTER_NUMBERS=[1,2,3,4];
+/* Extra modules that use the chapter engine but sit outside the numbered chapters. */
+var MODULES={pp:{data:'data/pp.js',video:'data/vpp.js'}};
+function nm(c){return c.label||('Chapter '+c.num);}
 var LATER=[
  'Chapter 5: Data Readiness as a Strategic Foundation','Chapter 6: AI Technical Challenges and Their Strategic Implications',
  'Chapter 7: The Toothbrush Test: AI Tools for Daily Clinical Practice','Chapter 8: Building the Business Case for Healthcare AI',
@@ -56,7 +59,7 @@ function allStats(){
 }
 
 /* ---------- activity frame ---------- */
-var LABEL={mcq:'Quiz',tf:'Myth or fact',sort:'Drag and drop',order:'Put in order',match:'Matching',cloze:'Fill the gaps',hunt:'Red flag hunt',scenario:'Scenario',rush:'Speed round',memory:'Memory game',allocate:'Budget game',selfassess:'Self-check'};
+var LABEL={recall:'Flashcards',tune:'Tuning game',mcq:'Quiz',tf:'Myth or fact',sort:'Drag and drop',order:'Put in order',match:'Matching',cloze:'Fill the gaps',hunt:'Red flag hunt',scenario:'Scenario',rush:'Speed round',memory:'Memory game',allocate:'Budget game',selfassess:'Self-check'};
 var A={}; // activity renderers: A[type](body, act, finish)
 
 function runActivity(host,act,opts){
@@ -495,6 +498,99 @@ A.selfassess=function(body,act,finish){
   }
 };
 
+/* ---------- Flashcards (repeat until every card is recalled) ----------
+   act.cards = [{f:'front', b:'back'}]. Cards marked "Not yet" go back into the pile,
+   so the learner meets the hard ones again a few cards later. */
+A.recall=function(body,act,finish){
+  var pile=shuffle(act.cards.map(function(_,i){return i;})),seen=0,got={},tries=0;
+  var info=h('p',{class:'muted small'}),card=h('div',{class:'flash',tabindex:0,role:'button','aria-live':'polite'}),row=h('div',{class:'row',style:'margin-top:10px'});
+  body.appendChild(h('p',{class:'muted small'},'Say the answer to yourself first, then turn the card over. Be honest: cards you mark “Not yet” come back until you know them.'));
+  body.appendChild(info);body.appendChild(card);body.appendChild(row);
+  function show(){
+    clear(row);
+    if(!pile.length){var f=Math.max(0.4,Math.min(1,act.cards.length/tries));finish(f,'All '+act.cards.length+' cards recalled in '+tries+' turns.');clear(card);card.appendChild(h('div',{class:'stars'},stars(f)));card.appendChild(h('p',{},'Every card recalled. Come back to the daily review tomorrow to lock it in.'));return;}
+    var i=pile[0],flipped=false;
+    info.textContent='Cards left: '+pile.length+' · Known: '+Object.keys(got).length+' of '+act.cards.length;
+    clear(card);card.className='flash';card.appendChild(h('div',{class:'side',html:act.cards[i].f}));card.appendChild(h('div',{class:'muted small'},'Tap to turn over'));
+    function flip(){if(flipped)return;flipped=true;card.className='flash back';clear(card);card.appendChild(h('div',{class:'side small muted',html:act.cards[i].f}));card.appendChild(h('div',{class:'side',html:act.cards[i].b}));
+      row.appendChild(h('button',{class:'btn',onclick:function(){tries++;got[i]=1;pile.shift();show();}},'✓ Got it'));
+      row.appendChild(h('button',{class:'btn alt',onclick:function(){tries++;pile.shift();pile.splice(Math.min(2,pile.length),0,i);show();}},'↺ Not yet'));}
+    card.onclick=flip;card.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();flip();}};
+    row.appendChild(h('button',{class:'btn alt',onclick:flip},'Turn over'));
+  }
+  show();
+};
+
+/* ---------- Tuning game: move a slider and watch the trade-offs ----------
+   act.levels = [{v:'label', m:[numbers matching act.measures], fb:'feedback'}], act.best=[lo,hi] (indexes),
+   act.measures = [{name, unit, max, good:'high'|'low'}] */
+A.tune=function(body,act,finish){
+  var n=act.levels.length,cur=act.start!=null?act.start:Math.floor(n/2),locked=false;
+  if(act.goal)body.appendChild(h('div',{class:'blk keyc'},h('span',{class:'tag'},'Your target'),h('div',{html:act.goal})));
+  var lab=h('div',{class:'tunelab'}),r=h('input',{type:'range',min:'0',max:String(n-1),step:'1',value:String(cur),'aria-label':act.slider||'Setting'});
+  var ends=h('div',{class:'row small muted',style:'justify-content:space-between'},h('span',{},act.left||'Fewer alerts'),h('span',{},act.right||'More alerts'));
+  var dash=h('div',{class:'tunedash'}),out=h('div');
+  body.appendChild(lab);body.appendChild(r);body.appendChild(ends);body.appendChild(dash);
+  var btn=h('button',{class:'btn',style:'margin-top:12px',onclick:lock},'Lock in this setting');body.appendChild(btn);body.appendChild(out);
+  function draw(){
+    var L=act.levels[cur];lab.innerHTML='<b>'+(act.slider||'Setting')+':</b> '+L.v;clear(dash);
+    act.measures.forEach(function(M,k){var v=L.m[k],w=Math.max(2,Math.min(100,v/M.max*100));
+      var ok=M.target==null?null:(M.good==='low'?v<=M.target:v>=M.target);
+      dash.appendChild(h('div',{class:'tunerow'},h('span',{class:'tn'},M.name),h('div',{class:'bar'},h('i',{style:'width:'+w+'%;background:'+(ok===null?'var(--brand)':ok?'var(--good)':'var(--bad)')})),h('b',{},v+(M.unit||'')+(ok===null?'':ok?' ✓':' ✗'))));});
+  }
+  r.addEventListener('input',function(){if(locked)return;cur=+r.value;draw();});
+  function lock(){
+    locked=true;r.disabled=true;btn.disabled=true;var L=act.levels[cur],lo=act.best[0],hi=act.best[1];
+    var f=cur>=lo&&cur<=hi?1:(cur===lo-1||cur===hi+1)?0.6:0.25;
+    out.appendChild(h('div',{class:'fb '+(f===1?'good':f>0.5?'mid':'bad'),html:'<b>'+(f===1?'Well balanced. ':f>0.5?'Close. ':'Not the best balance. ')+'</b>'+L.fb+(act.why?'<p style="margin-top:8px">'+act.why+'</p>':'')}));
+    finish(f,f===1?'You found the balance point.':'Try another setting to see the trade-off.');
+  }
+  draw();
+};
+
+/* ---------- Daily review: spaced repetition across days (Leitner boxes) ----------
+   A card answered correctly moves up a box and comes back later (1, 3, 7, 14, 30 days).
+   A card answered wrongly drops to box 1 and returns before the session ends. */
+var GAPS=[0,1,3,7,14,30],DAY=86400000;
+var Review={
+  rec:function(c){Store.d.r=Store.d.r||{};return Store.d.r[c.num]=Store.d.r[c.num]||{};},
+  due:function(c){var r=this.rec(c),now=Date.now(),out=[],fresh=[];
+    c.review.forEach(function(q,i){var x=r[i];if(!x)fresh.push(i);else if(x.due<=now)out.push(i);});
+    return out.concat(fresh.slice(0,c.reviewNew||6));},
+  dueCount:function(c){return this.due(c).length;},
+  mark:function(c,i,ok){var r=this.rec(c),x=r[i]||{b:0,due:0};x.b=ok?Math.min(GAPS.length-1,x.b+1):1;x.due=Date.now()+GAPS[x.b]*DAY-3600000;r[i]=x;Store.save();},
+  boxes:function(c){var r=this.rec(c),b=[0,0,0,0,0,0];c.review.forEach(function(q,i){b[r[i]?r[i].b:0]++;});return b;}
+};
+function reviewView(main,c){
+  main.appendChild(h('div',{class:'hero'},h('div',{class:'eyebrow'},nm(c)),h('h1',{},'🧠 Daily review'),
+    h('p',{class:'lead'},'Five minutes a day. Each question comes back after a gap: 1 day, then 3, 7, 14 and 30 days. Get it wrong and it starts again. Recalling something just as you are starting to forget it is one of the strongest ways to make learning last.')));
+  var host=h('div');main.appendChild(host);
+  function meter(){
+    var b=Review.boxes(c),names=['New','Day 1','Day 3','Day 7','Day 14','Day 30+'],box=h('div',{class:'card'},h('h3',{},'How strong is your memory of this module?'));
+    var g=h('div',{class:'boxes'});b.forEach(function(v,i){g.appendChild(h('div',{class:'bx'},h('div',{class:'bxbar'},h('i',{style:'height:'+Math.round(v/c.review.length*100)+'%'})),h('b',{},String(v)),h('span',{class:'small muted'},names[i])));});
+    box.appendChild(g);box.appendChild(h('p',{class:'small muted'},'Cards move to the right each time you recall them correctly on the day they are due.'));return box;
+  }
+  function start(){
+    clear(host);var q=shuffle(Review.due(c)),i=0,right=0,retry={};
+    if(!q.length){host.appendChild(h('div',{class:'fb good'},h('b',{},'Nothing is due today. '),'Come back tomorrow. Your next cards are waiting in the boxes below.'));host.appendChild(meter());return;}
+    function next(){
+      clear(host);
+      if(i>=q.length){var rf=right/Math.max(1,i);host.appendChild(h('div',{class:'fb '+(rf>=0.8?'good':rf>=0.5?'mid':'bad')},h('div',{class:'stars'},stars(rf)),h('p',{html:'<b>Review done: '+right+' correct out of '+i+' answers.</b> Cards you missed came back before the end, and will return tomorrow.'})));host.appendChild(meter());return;}
+      var idx=q[i],card=h('div',{class:'card'}),nb=h('div');
+      card.appendChild(h('p',{class:'muted small'},'Card '+(i+1)+' of '+q.length+(retry[idx]?' · second try':'')));
+      mcqCore(card,c.review[idx],function(ok){
+        if(!retry[idx])Review.mark(c,idx,ok);
+        if(ok)right++;else if(!retry[idx]){retry[idx]=1;q.push(idx);}
+        nb.appendChild(h('button',{class:'btn',style:'margin-top:12px',onclick:function(){i++;next();}},'Next'));
+      },true);
+      card.appendChild(nb);host.appendChild(card);
+    }
+    next();
+  }
+  host.appendChild(meter());
+  host.appendChild(h('button',{class:'btn',onclick:start},Review.dueCount(c)?'Start today’s review ('+Review.dueCount(c)+' cards)':'Check for cards'));
+}
+
 /* ---------- Teach blocks ---------- */
 function teachBlock(b){
   if(b.h)return h('div',{class:'blk'},h('h3',{html:b.h}),h('p',{html:b.p}));
@@ -559,12 +655,13 @@ function listenBar(lesson,hookEl,blockEls){
 function loadScript(src,ok,bad){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.appendChild(s);}
 
 function chapterPage(){
-  var num=parseInt(new URLSearchParams(location.search).get('ch'),10)||1;
-  if(CHAPTER_NUMBERS.indexOf(num)<0)num=1;
+  var raw=new URLSearchParams(location.search).get('ch'),num;
+  if(MODULES[raw])num=raw;else{num=parseInt(raw,10)||1;if(CHAPTER_NUMBERS.indexOf(num)<0)num=1;}
+  var mod=MODULES[num];
   var main=document.getElementById('main'),nav=document.getElementById('nav'),ttl=document.getElementById('ttl'),xpEl=document.getElementById('xp');
   var c;
-  loadScript('data/ch0'+num+'.js',function(){loadScript('data/v0'+num+'.js',start,start);},function(){main.innerHTML='<div class="card">This chapter is not available yet. <a href="index.html">Back to the course home</a>.</div>';});
-  function start(){c=window.COURSE_DATA[num];if(!c){main.textContent='Chapter not found.';return;}document.title='Chapter '+c.num+': '+c.title;ttl.textContent='Chapter '+c.num+': '+c.title;window.addEventListener('hashchange',route);route();}
+  loadScript(mod?mod.data:'data/ch0'+num+'.js',function(){loadScript(mod?mod.video:'data/v0'+num+'.js',start,start);},function(){main.innerHTML='<div class="card">This chapter is not available yet. <a href="index.html">Back to the course home</a>.</div>';});
+  function start(){c=window.COURSE_DATA[num];if(!c){main.textContent='Chapter not found.';return;}document.title=nm(c)+': '+c.title;ttl.textContent=nm(c)+': '+c.title;window.addEventListener('hashchange',route);route();}
 
   function chip(){var s=chStats(c);xpEl.textContent=s.xp+' XP · '+pct(s.done/s.total)+'%';}
   function lessonDone(l){return l.activities.every(function(a,i){return Store.get(c.num,l.id+'.'+i)!==undefined;});}
@@ -572,8 +669,9 @@ function chapterPage(){
     clear(nav);
     var items=[['overview','Overview',false]];
     c.lessons.forEach(function(l,i){items.push([l.id,(i+1)+'. '+l.title,lessonDone(l)]);});
-    items.push(['quiz','Chapter quiz',Store.get(c.num,'quiz')!==undefined]);
+    items.push(['quiz',c.label?c.label+' quiz':'Chapter quiz',Store.get(c.num,'quiz')!==undefined]);
     items.push(['boss','Boss level',Store.get(c.num,'boss')!==undefined]);
+    if(c.review)items.push(['review','🧠 Daily review',false]);
     items.push(['gloss','Glossary',false]);
     items.forEach(function(it){nav.appendChild(h('a',{href:'#'+it[0],class:(cur===it[0]?'on ':'')+(it[2]?'done':'')},it[1]));});
     var on=nav.querySelector('.on');if(on&&on.scrollIntoView)try{on.scrollIntoView({inline:'center',block:'nearest'});}catch(e){}
@@ -582,14 +680,16 @@ function chapterPage(){
     if(window.LessonVideo)LessonVideo.stopAll();
     var id=(location.hash||'#overview').slice(1);clear(main);window.scrollTo(0,0);
     var l=c.lessons.filter(function(x){return x.id===id;})[0];
-    if(l)lessonView(l);else if(id==='quiz')quizView();else if(id==='boss')bossView();else if(id==='gloss')glossView();else overview();
-    drawNav(l?l.id:(['quiz','boss','gloss'].indexOf(id)>=0?id:'overview'));chip();
+    if(l)lessonView(l);else if(id==='quiz')quizView();else if(id==='boss')bossView();else if(id==='gloss')glossView();else if(id==='review'&&c.review)reviewView(main,c);else overview();
+    drawNav(l?l.id:(['quiz','boss','gloss','review'].indexOf(id)>=0?id:'overview'));chip();
   }
   function overview(){
     var s=chStats(c),first=null;
-    main.appendChild(h('div',{class:'hero'},h('div',{class:'eyebrow'},c.part),h('h1',{},'Chapter '+c.num+': '+c.title),h('p',{class:'lead'},c.tagline),h('p',{class:'muted'},'About '+c.minutes+' minutes · '+c.lessons.length+' lessons, each with a narrated 3D video · quiz · boss level')));
+    main.appendChild(h('div',{class:'hero'},h('div',{class:'eyebrow'},c.part),h('h1',{},nm(c)+': '+c.title),h('p',{class:'lead'},c.tagline),h('p',{class:'muted'},'About '+c.minutes+' minutes · '+c.lessons.length+' lessons, each with a narrated 3D video · quiz · boss level'+(c.review?' · daily review':''))));
     if(s.complete)main.appendChild(h('div',{class:'fb good'},h('div',{class:'stars'},stars(s.score)),h('b',{},'Chapter complete. Your score is '+pct(s.score)+'%. '),'Replay any activity to improve it.'));
     else main.appendChild(h('div',{class:'card'},h('div',{class:'row'},h('b',{},'Your progress'),h('span',{class:'muted'},s.done+' of '+s.total+' activities')),h('div',{class:'bar'},h('i',{style:'width:'+pct(s.done/s.total)+'%'}))));
+    if(c.review){var due=Review.dueCount(c);main.appendChild(h('a',{class:'card chcard reviewcard',href:'#review'},h('b',{},'🧠 Daily review: '+(due?due+' card'+(due>1?'s':'')+' ready for you today':'nothing due today')),h('span',{class:'muted small'},'A few minutes of quick questions that come back after 1, 3, 7 and 14 days. Recalling an idea again and again, with gaps in between, is what makes it stick.')));}
+    if(c.links)main.appendChild(h('div',{class:'grid two'},c.links.map(function(L){return h('a',{class:'card chcard',href:L.href},h('span',{class:'num'},L.tag),h('b',{},L.title),h('span',{class:'muted small'},L.text));})));
     var ul=h('ul');c.outcomes.forEach(function(o){ul.appendChild(h('li',{html:o}));});
     main.appendChild(h('div',{class:'card'},h('h2',{},'By the end you will be able to'),ul));
     var g=h('div',{class:'grid two'});
@@ -599,7 +699,7 @@ function chapterPage(){
     });
     main.appendChild(g);
     if(!first)first='#quiz';
-    main.appendChild(h('div',{class:'foot'},h('a',{class:'btn',href:first},s.done?'Continue':'Start Chapter '+c.num),h('a',{class:'btn alt',href:'index.html'},'Course home')));
+    main.appendChild(h('div',{class:'foot'},h('a',{class:'btn',href:first},s.done?'Continue':'Start '+nm(c)),h('a',{class:'btn alt',href:'index.html'},'Course home')));
   }
   function lessonView(l){
     var idx=c.lessons.indexOf(l);
@@ -623,7 +723,7 @@ function chapterPage(){
     var frames=[];
     var footer=h('div',{class:'foot'});
     var nextHref=idx+1<c.lessons.length?'#'+c.lessons[idx+1].id:'#quiz';
-    var nextBtn=h('a',{class:'btn',href:nextHref},idx+1<c.lessons.length?'Next lesson →':'On to the chapter quiz →');
+    var nextBtn=h('a',{class:'btn',href:nextHref},idx+1<c.lessons.length?'Next lesson →':'On to the '+(c.label?c.label.toLowerCase():'chapter')+' quiz →');
     footer.appendChild(h('a',{class:'btn alt',href:'#overview'},'← Overview'));footer.appendChild(nextBtn);
     l.activities.forEach(function(a,i){
       var f=runActivity(actHost,a,{ch:c.num,key:l.id+'.'+i,weight:10,onScored:function(){
@@ -640,7 +740,7 @@ function chapterPage(){
   }
   function quizView(){
     var qs=c.finalQuiz.questions;
-    main.appendChild(h('div',{class:'hero'},h('div',{class:'eyebrow'},'Chapter '+c.num),h('h1',{},c.finalQuiz.title||'Chapter quiz'),h('p',{class:'lead'},qs.length+' questions. One try each. Explanations appear after every answer.')));
+    main.appendChild(h('div',{class:'hero'},h('div',{class:'eyebrow'},nm(c)),h('h1',{},c.finalQuiz.title||'Chapter quiz'),h('p',{class:'lead'},qs.length+' questions. One try each. Explanations appear after every answer.')));
     var host=h('div');main.appendChild(host);
     var prev=Store.get(c.num,'quiz');
     if(prev!==undefined)main.insertBefore(h('p',{class:'chip'},'Best score so far: '+pct(prev)+'%'),host);
@@ -696,8 +796,9 @@ var heroScene=null;
 function homePage(){
   var main=document.getElementById('main');
   window.COURSE_DATA=window.COURSE_DATA||{};
-  var pending=CHAPTER_NUMBERS.length;
-  CHAPTER_NUMBERS.forEach(function(n){loadScript('data/ch0'+n+'.js',function(){if(--pending===0)draw();},function(){if(--pending===0)draw();});});
+  var srcs=CHAPTER_NUMBERS.map(function(n){return 'data/ch0'+n+'.js';}).concat(Object.keys(MODULES).map(function(k){return MODULES[k].data;}));
+  var pending=srcs.length;
+  srcs.forEach(function(src){loadScript(src,function(){if(--pending===0)draw();},function(){if(--pending===0)draw();});});
   function draw(){
     clear(main);
     var st=allStats();
@@ -730,6 +831,17 @@ function homePage(){
         h('span',{class:'small'},s.complete?'✅ Complete · score '+pct(s.score)+'%':s.done?s.done+' of '+s.total+' activities done':'Not started')));
     });
     main.appendChild(g);
+    var pp=window.COURSE_DATA.pp;
+    if(pp){
+      var ps=chStats(pp),due=pp.review?Review.dueCount(pp):0;
+      main.appendChild(h('h2',{style:'margin-top:22px'},'Workshop: From Pilot to Practice'));
+      main.appendChild(h('p',{class:'muted'},'A half-day workshop for clinicians and technical teams, built on Chapters 10 and 11 of the book. Work through it alone online, or use it in the room with a facilitator.'));
+      main.appendChild(h('div',{class:'grid two'},
+        h('a',{class:'card chcard',href:'chapter.html?ch=pp'},h('span',{class:'num'},'WORKSHOP · ~'+pp.minutes+' MIN'),h('b',{},pp.title),h('span',{class:'muted small'},pp.tagline),h('div',{class:'bar'},h('i',{style:'width:'+pct(ps.done/ps.total)+'%'})),h('span',{class:'small'},ps.complete?'✅ Complete · score '+pct(ps.score)+'%':ps.done?ps.done+' of '+ps.total+' activities done':'Not started')),
+        h('a',{class:'card chcard',href:'sim.html'},h('span',{class:'num'},'3D SIMULATION · ~30 MIN'),h('b',{},'🏥 Virtual hospital: the night the alerts went quiet'),h('span',{class:'muted small'},'Walk the ward in 3D, question eight members of staff, fast-forward a night shift and make the go/no-go call. Your choices decide what happens six months later.')),
+        h('a',{class:'card chcard',href:'chapter.html?ch=pp#review'},h('span',{class:'num'},'DAILY REVIEW · 5 MIN'),h('b',{},'🧠 '+(due?due+' review cards ready today':'Daily review')),h('span',{class:'muted small'},'Short questions that come back after 1, 3, 7, 14 and 30 days, so the ideas stay with you after the workshop.')),
+        h('a',{class:'card chcard',href:'facilitator.html'},h('span',{class:'num'},'FOR FACILITATORS'),h('b',{},'🧑‍🏫 Run this as a half-day workshop'),h('span',{class:'muted small'},'Session plan, timings, printable role cards, debrief questions and answer notes for every activity.'))));
+    }
     var more=h('div',{class:'card'},h('h3',{},'Coming next'),h('p',{class:'muted small'},'The remaining chapters of the book will be added in later releases.'));
     var ul=h('ul',{class:'small muted'});LATER.forEach(function(t){ul.appendChild(h('li',{},t));});more.appendChild(ul);main.appendChild(more);
     // certificate

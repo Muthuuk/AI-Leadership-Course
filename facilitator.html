@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Facilitator Guide</title>
+<meta name="description" content="Facilitator guide for the half-day workshop From Pilot to Practice: session plan, role cards, debrief questions and answer notes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+.toc a{display:inline-block;margin:0 10px 6px 0}
+.rolecards{display:grid;gap:14px}
+@media(min-width:700px){.rolecards{grid-template-columns:1fr 1fr}}
+.rolecard{border:2px dashed var(--line);border-radius:14px;padding:16px;background:var(--card)}
+.rolecard h3{margin-bottom:2px}
+.rolecard .secret{background:var(--accent-soft);border-left:5px solid var(--accent);padding:10px 12px;border-radius:8px;margin-top:8px}
+.ans h4{margin:14px 0 4px}
+.ans ul{margin:4px 0 8px}
+.time{font-weight:800;color:var(--brand);white-space:nowrap}
+@media print{
+  .topbar,.noprint{display:none!important}
+  body{background:#fff;color:#000;font-size:12pt}
+  .card{box-shadow:none;break-inside:avoid}
+  .rolecard{break-inside:avoid;border:1.5px dashed #555}
+  #roles{break-before:page}
+  a{color:#000}
+}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap"><a class="home" href="chapter.html?ch=pp">← Workshop</a><span class="ttl">Facilitator guide</span><button class="btn alt noprint" style="padding:6px 12px" onclick="window.print()">🖨 Print</button></div></header>
+<main class="wrap">
+
+<div class="hero"><div class="eyebrow">AI Leadership in Healthcare · For facilitators</div>
+<h1>From Pilot to Practice: running the half-day workshop</h1>
+<p class="lead">Everything you need to run the session in a room or online: timings, what to say, printable role cards, debrief questions, and answer notes for every activity on the site.</p>
+<p class="toc small noprint"><a href="#plan">Session plan</a><a href="#prep">Preparation</a><a href="#run">Running each part</a><a href="#roles">Role cards</a><a href="#debrief">Debrief</a><a href="#learning">How the learning design works</a><a href="#after">After the session</a><a href="#answers">Answer notes</a></p></div>
+
+<div class="card"><h2>At a glance</h2>
+<p>Most AI tools in healthcare never get beyond the pilot. This workshop puts clinicians and technical teams at the same table and asks them to make one decision together, using a realistic case: a hospital trust that has piloted an AI early-warning tool for patients who are getting worse on the ward. By the end, each team has taken the tool through a go/no-go decision and drafted a plan for moving it into practice.</p>
+<div class="tablewrap"><table class="t"><tbody>
+<tr><td><b>Length</b></td><td>3.5 hours including a 15-minute break (a 2.5-hour version is described below)</td></tr>
+<tr><td><b>Group size</b></td><td>16 to 30 people, in mixed teams of five or six</td></tr>
+<tr><td><b>Ideal mix per team</b></td><td>Clinicians (doctors, nurses, allied health professionals); digital, IT or data staff; a clinical safety or information governance lead; an operational or finance manager; a patient or public representative where possible</td></tr>
+<tr><td><b>Based on</b></td><td>Chapters 10 (The Pilot Approach) and 11 (Scaling from Pilot to Enterprise) of <i>A Strategic Guide to AI in Healthcare: From Awareness to Implementation</i> (Routledge)</td></tr>
+<tr><td><b>Online parts</b></td><td>The five workshop lessons (each with a narrated 3D video), the virtual hospital simulation, the workshop quiz and boss level, and the daily review</td></tr>
+</tbody></table></div>
+<p class="small muted">No technical background is assumed. Every clinical and technical term is explained the first time it appears, both in the lessons and in the role cards.</p></div>
+
+<div class="card" id="plan"><h2>Session plan (3.5 hours)</h2>
+<p>The plan moves from the problem (why pilots stall), through the evidence (reading the results), to the decision and the plan. Each block uses one part of the site, so participants can revisit it afterwards.</p>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>Time</th><th>Block</th><th>Use on the site</th><th>What happens</th></tr></thead>
+<tbody>
+<tr><td class="time">0:00 (20 min)</td><td>Welcome and framing</td><td>Lesson 1 video</td><td>Play the Lesson 1 video on the big screen. Introduce “pilot purgatory”. Hand out role cards.</td></tr>
+<tr><td class="time">0:20 (25 min)</td><td>Two languages, one decision</td><td>Lesson 1 activities</td><td>Each person writes what “it works” means in their role. Teams compare, then agree three shared success measures. Teams then try the “Who would say this?” sort.</td></tr>
+<tr><td class="time">0:45 (35 min)</td><td>Designing a pilot</td><td>Lesson 2</td><td>Teams read the briefing (the first screen of the simulation) and use the red flag hunt to check whether the pilot was set up to answer the questions that matter.</td></tr>
+<tr><td class="time">1:20 (15 min)</td><td colspan="3"><b>Break</b></td></tr>
+<tr><td class="time">1:35 (40 min)</td><td>Reading the results</td><td>Lesson 3, then the simulation</td><td>Show the Lesson 3 video. Teams play the tuning game, then start the virtual hospital simulation on one device per team. Each role-holder reads their own card aloud when the team reaches that person on the ward.</td></tr>
+<tr><td class="time">2:15 (35 min)</td><td>Night shift, safety and the decision</td><td>Simulation stages 4 to 6, Lesson 4</td><td>Teams play the night shift together, agree the root cause and fixes, and make their recommendation. Facilitator checks each team’s conditions.</td></tr>
+<tr><td class="time">2:50 (25 min)</td><td>From decision to practice</td><td>Lesson 5</td><td>Teams draft a one-page plan: owners, conditions, monitoring and a switch-off point. Use the “before scale-up or after go-live?” sort to check it.</td></tr>
+<tr><td class="time">3:15 (15 min)</td><td>Close</td><td>Simulation results, daily review</td><td>Teams compare their “six months later” scores and decisions. Each person names one action for their own organisation and starts their first daily review.</td></tr>
+</tbody></table></div>
+<h3>Shorter version (2.5 hours)</h3>
+<p>Ask participants to watch the Lesson 1 and Lesson 2 videos before the session, and start at the results block. Keep the simulation and the decision; they are the heart of the workshop.</p></div>
+
+<div class="card" id="prep"><h2>Preparation</h2>
+<p>Most of the preparation is about the room and the people, not the technology. The site runs in any modern web browser, needs no logins, and stores progress only on each device.</p>
+<ol>
+<li><b>Recruit a real mix.</b> The workshop only works if each team includes both clinical and technical roles. Ask sponsors to send pairs (for example, a ward manager and a digital lead from the same trust).</li>
+<li><b>Print the role cards</b> (one set per team) using the Print button at the top of this page; the role cards start on a new page.</li>
+<li><b>Check the devices.</b> One laptop or tablet per team for the simulation, plus a big screen for the videos. Open <code>sim.html</code> once beforehand so the 3D loads quickly. If sound is a problem, the videos have captions and a “captions only” voice setting.</li>
+<li><b>Print or display the pilot results pack</b> (it is on the first screen of the simulation).</li>
+<li><b>Prepare a flipchart per team</b> with four columns: Benefit, Safety, Workflow, Fairness, plus a box for “Our recommendation”.</li>
+<li><b>Tailoring (optional).</b> To use an organisation’s own AI tool as the case, replace the figures in the results pack and adjust the role cards. Keep the structure: each role holds one fact nobody else has.</li>
+</ol></div>
+
+<div class="card" id="run"><h2>Running each part</h2>
+<p>The facilitator’s job is to keep every voice in the conversation, especially the quieter ones. Clinical staff often defer to technical staff on anything with numbers, and technical staff often defer to clinicians on anything about patients. The role cards are designed to break that habit: no team can reach a sound decision without hearing every card.</p>
+<h3>1. Two languages, one decision</h3>
+<p>Ask each person to write, in one sentence, what “this AI tool works” would mean in their job. Read a few aloud. Point out that every answer is true, and that they measure different things. Then ask each team to agree three success measures that every role would accept, including at least one that the tool could genuinely fail.</p>
+<p><b>Listen for:</b> measures that are easy to hit (“staff like it”), measures that cannot change during the pilot (“the supplier’s accuracy is above 0.8”), and no measure at all about night shifts or particular groups of patients.</p>
+<h3>2. Designing a pilot</h3>
+<p>The briefing says the pilot aimed “to evaluate the tool in practice”. Ask: what result could have failed this pilot? (None.) Then use the red flag hunt in Lesson 2 to find the other gaps: no agreed success measures, an open-ended extension, reliance on the supplier’s figure, and paperwork that only covers the pilot.</p>
+<h3>3. Reading the results and the simulation</h3>
+<p>Show the Lesson 3 video, then let teams play the tuning game. Most teams first try to catch every patient and discover alert fatigue for themselves. In the simulation, the person holding each role card reads it aloud when the team clicks that person on the ward. Encourage teams to hear all eight before the night shift.</p>
+<p><b>The key moment</b> comes when the ward manager’s fact (night staff stopped checking the separate screen) meets the data scientist’s fact (the tool is weaker when observations are recorded late, mostly at night). Pause the room when the first team spots that these are one linked hazard, and ask them to explain it to everyone.</p>
+<h3>4. Night shift and the decision</h3>
+<p>Play the night shift together. Then ask teams to choose two fixes and make their recommendation. Visit each team and ask: “Who owns each condition, how will you measure it, and by when?”</p>
+<h3>5. From decision to practice</h3>
+<p>Each team drafts a one-page plan with three parts: what must be done before any new ward goes live, what will be monitored after go-live, and the switch-off point. Teams that chose “go” should explain how they will deal with the night-shift gap; teams that chose “stop” should say what they would need to see to try again.</p></div>
+
+<div class="card" id="roles"><h2>Role cards</h2>
+<p class="noprint">Print one set per team. Each person reads only their own card until the team meets that person on the ward in the simulation.</p>
+<div class="rolecards" id="rolecards"></div></div>
+
+<div class="card" id="debrief"><h2>Debrief</h2>
+<p>There is no single right answer. Teams that choose different options can all be right if their reasons are sound. Most teams that reason carefully choose “go with conditions” or a focused “extend the pilot”. Use the debrief to draw out six points.</p>
+<ol>
+<li><b>Agree success before you start.</b> “Evaluate the tool in practice” is not a question a pilot can answer.</li>
+<li><b>Local figures beat supplier figures.</b> A drop on local patients is normal; checking for it is not optional.</li>
+<li><b>Alert fatigue is a safety risk.</b> An alert that staff stop reading is worse than no alert, because it creates false reassurance.</li>
+<li><b>Check how the tool works for every group.</b> Weaker performance for older patients or at night is a fairness issue as well as a clinical one.</li>
+<li><b>The workflow is part of the tool.</b> A separate screen at the nurses’ station is a design decision with safety consequences.</li>
+<li><b>The paperwork must follow the scale.</b> Safety cases and data protection assessments written for a pilot do not cover wider use.</li>
+</ol>
+<h3>Questions to ask the whole room</h3>
+<ul>
+<li>Which fact changed your team’s mind? Who held it?</li>
+<li>Which role did your team find hardest to hear from, and why?</li>
+<li>Where is this same pattern happening in your own organisation right now?</li>
+<li>What is one pilot you know of that is in pilot purgatory? What decision is missing?</li>
+</ul></div>
+
+<div class="card" id="learning"><h2>How the learning design works</h2>
+<p>The site is built around a few well-tested ideas from learning research. They explain why the activities repeat key ideas in different forms, and why the daily review matters as much as the workshop itself.</p>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>Idea</th><th>In plain English</th><th>Where you see it</th></tr></thead>
+<tbody>
+<tr><td><b>Retrieval practice</b></td><td>Pulling an idea back out of memory strengthens it far more than reading it again. Each time we recall something, the brain’s connections for it get stronger and quicker to use.</td><td>Quizzes, flashcards, myth or fact, the daily review</td></tr>
+<tr><td><b>Spacing</b></td><td>Recalling an idea after a gap, just as it starts to fade, makes it last much longer than cramming.</td><td>The daily review brings each card back after 1, 3, 7, 14 and 30 days</td></tr>
+<tr><td><b>Repetition in varied forms</b></td><td>Meeting the same idea as a video, a reading, a game and a decision builds several routes to it, so it is easier to recall in a real situation.</td><td>Alert fatigue appears in the Lesson 3 video, the tuning game, the speed round, the simulation and the review</td></tr>
+<tr><td><b>Pictures with words</b></td><td>Seeing an idea while hearing it explained helps people understand and remember it.</td><td>Narrated 3D videos; the 3D ward</td></tr>
+<tr><td><b>Learning by doing, with feedback</b></td><td>Making a decision and seeing its consequences straight away fixes the lesson more firmly than being told.</td><td>Scenarios, the boss level, and the simulation’s “six months later” outcome</td></tr>
+<tr><td><b>Stories and stakes</b></td><td>We remember what we care about. A patient in bed 5 at 3 a.m. is more memorable than a statistic.</td><td>The night shift and the patient representative’s question</td></tr>
+</tbody></table></div>
+<p class="small muted">Further reading: Roediger and Karpicke (2006) on retrieval practice; Cepeda and colleagues (2006) on spacing; Paivio’s dual coding theory on pictures with words.</p></div>
+
+<div class="card" id="after"><h2>After the session</h2>
+<p>The workshop starts the learning; the follow-up makes it stick. Encourage every participant to open the daily review the day after the workshop, and again whenever it shows cards due.</p>
+<ul>
+<li><b>Day 1, 3, 7 and 14:</b> five-minute daily review on their own device.</li>
+<li><b>Week 1:</b> each participant finishes any lessons they did not complete, and the boss level.</li>
+<li><b>Month 3 (optional follow-up session):</b> teams bring the one-page plan they drafted, and report what happened to the pilot they named at the close.</li>
+</ul>
+<h3>Evaluation</h3>
+<p>Ask participants to rate, before and after the session, how confident they feel (1 to 5) to: agree success measures for a pilot; read pilot results critically; name the safety and data protection checks needed to scale; and make and defend a go/no-go decision. Add one open question: “What will you do differently next week?”</p></div>
+
+<div class="card ans" id="answers"><h2>Answer notes for every activity</h2>
+<p>These notes are generated from the activities themselves, so they always match what participants see on the site.</p>
+<div id="answerhost"><p class="muted">Loading…</p></div></div>
+
+<p class="small muted">Based on <i>A Strategic Guide to AI in Healthcare: From Awareness to Implementation</i> by Professor Muthu Ramachandran (Routledge). The case study is a made-up composite and its figures are illustrative.</p>
+</main>
+<script src="data/pp.js"></script>
+<script src="data/sim-pp.js"></script>
+<script src="assets/facilitator.js"></script>
+</body>
+</html>
