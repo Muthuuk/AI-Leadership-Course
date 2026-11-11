@@ -4,7 +4,7 @@
    for each sentence the tutor speaks.
 
    Scenes.mount(stageElement, spec) returns { step(k), auto(on), dispose() }.
-   Scene types: graph, bars, chain, stairs, hype (plus flood, train, pixels, clusters,
+   Scene types: graph, bars, chain, stairs, hype, ward (plus flood, train, pixels, clusters,
    curve, people from the cybersecurity course). */
 (function(){
   const COL = { cyan:'#38BDF8', green:'#4ADE80', red:'#F87171', amber:'#FBBF24', violet:'#A78BFA', slate:'#94A3B8', white:'#E2E8F0', pink:'#F472B6' };
@@ -471,7 +471,86 @@
     return { step, dispose: C.dispose, nSteps: spec.steps ? spec.steps.length : 1 };
   }
 
-  const TYPES = { graph, flood, train, bars, pixels, clusters, curve, people, chain, stairs, hype };
+  /* ---------- WARD: a hospital ward with beds, an AI early-warning tool and a separate alert screen.
+     spec.steps = modes: 0 calm ward, 1 AI reads the observations, 2 alerts start firing,
+     3 alert fatigue (screen ignored, one patient missed), 4 alerts built into the nurses' handhelds,
+     5 rolled out to many wards. Shared helper figure() is also used by the virtual hospital. */
+  function figure(c, s){
+    s = s || 1; const g = new THREE.Group(); const m = new THREE.MeshStandardMaterial({ color: col(c), emissive: col(c), emissiveIntensity: 0.25, roughness: 0.5 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22*s, 0.3*s, 0.9*s, 18), m); body.position.y = 0.45*s;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2*s, 18, 14), new THREE.MeshStandardMaterial({ color: 0xe8c4a0, roughness: 0.6 })); head.position.y = 1.08*s;
+    g.add(body, head); g.userData.mat = m; return g;
+  }
+  function bed(){
+    const g = new THREE.Group();
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.35, 2.0), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.6 })); frame.position.y = 0.35;
+    const sheet = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.12, 1.5), new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.7 })); sheet.position.set(0, 0.58, 0.2);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.35), new THREE.MeshStandardMaterial({ color: 0xffffff })); pillow.position.set(0, 0.6, -0.72);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), new THREE.MeshStandardMaterial({ color: 0xe8c4a0 })); head.position.set(0, 0.75, -0.62);
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), new THREE.MeshStandardMaterial({ color: 0x4ade80, emissive: 0x4ade80, emissiveIntensity: 0.8 })); light.position.set(0, 1.55, -0.95);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6), new THREE.MeshStandardMaterial({ color: 0x94a3b8 })); pole.position.set(0, 1.1, -0.95);
+    g.add(frame, sheet, pillow, head, light, pole); g.userData.light = light; return g;
+  }
+  function screenTex(){
+    const c = document.createElement('canvas'); c.width = 512; c.height = 320; const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter;
+    return { c, t, draw(txt, sub, bg){ const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0,0,512,320); g.fillStyle = '#fff'; g.textAlign = 'center';
+      g.font = '700 120px "Public Sans", Arial'; g.fillText(txt, 256, 170); g.font = '600 38px "Public Sans", Arial'; g.fillText(sub, 256, 250); t.needsUpdate = true; } };
+  }
+  function buildWard(C, ox, oz, sc){
+    const W = new THREE.Group(); W.position.set(ox, -1.6, oz); W.scale.setScalar(sc || 1); C.scene.add(W);
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(11, 0.08, 7), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, transparent: true })); W.add(floor);
+    const beds = [];
+    for (let i = 0; i < 6; i++){ const b = bed(); const left = i < 3; b.position.set(-3.6 + (i%3)*3.6, 0, left ? -2.2 : 2.2); if (!left) b.rotation.y = Math.PI; W.add(b); beds.push(b); }
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x475569 })); desk.position.set(0, 0.4, 0); W.add(desk);
+    return { W, beds, floor, desk };
+  }
+  function ward(stage, spec){
+    const C = core(stage, Object.assign({ cam: [0, 6.2, 10.5], look: [0, -0.4, 0], floor: false }, spec));
+    const main = buildWard(C, 0, 0, 1);
+    const scr = screenTex(); const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.95), new THREE.MeshBasicMaterial({ map: scr.t }));
+    screen.position.set(0, 1.45, 0.05); main.W.add(screen);
+    const sl = label(spec.screenLabel || 'Separate alert screen', { scale: 0.38, border: COL.amber }); sl.position.set(0, 1.5, 0); C.scene.add(sl);
+    const nurses = [figure('cyan'), figure('cyan')]; nurses[0].position.set(-0.7, 0.04, 0.9); nurses[1].position.set(0.8, 0.04, 0.9); nurses.forEach(n => main.W.add(n));
+    const pads = nurses.map(n => { const p = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.2, 0.03), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.9, transparent: true, opacity: 0 })); p.position.set(0.25, 0.8, 0.25); n.add(p); return p; });
+    const ai = shapeMesh('ico', col('violet'), 0.9); ai.position.set(0, 2.6, -0.4); C.scene.add(ai); ai.material.opacity = 0;
+    const al = label(spec.aiLabel || 'AI early-warning tool', { scale: 0.42, border: COL.violet }); al.position.set(0, 3.5, -0.4); al.material.opacity = 0; C.scene.add(al);
+    const flows = main.beds.map(b => { const s = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xa78bfa, transparent: true, opacity: 0 })); C.scene.add(s); s.userData.t = Math.random(); return s; });
+    const ghosts = []; [[-12, -9], [0, -11], [12, -9], [-16, -2], [16, -2]].forEach(p => { const g = buildWard(C, p[0], p[1], 0.7); g.W.visible = false; g.W.traverse(o => { if (o.material){ o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0; } }); ghosts.push(g); });
+    const gl = label(spec.scaleLabel || 'Twenty wards, one standard', { scale: 0.5, border: COL.green }); gl.position.set(0, 3.6, -8); gl.material.opacity = 0; C.scene.add(gl);
+    let mode = 0, count = 0, lastDraw = -1, lastKey = '';
+    const bedPos = b => { const v = new THREE.Vector3(); b.userData.light.getWorldPosition(v); return v; };
+    C.updaters.push((dt, now) => {
+      const k = Math.min(1, dt*3);
+      ai.material.opacity += ((mode >= 1 ? 1 : 0) - ai.material.opacity)*k; al.material.opacity = ai.material.opacity; if (!reduced()) ai.rotation.y += dt*0.8;
+      flows.forEach((s, i) => { s.userData.t = (s.userData.t + dt*0.5) % 1; const a = bedPos(main.beds[i]); s.position.lerpVectors(a, ai.position, s.userData.t); s.material.opacity = mode >= 1 && mode <= 4 ? 0.9 : 0; });
+      main.beds.forEach((b, i) => {
+        let c = '#4ADE80', pulse = 0;
+        if (mode === 2 || mode === 3){ const firing = (Math.floor(now/900) + i*2) % 5 < 2; if (firing){ c = '#FBBF24'; pulse = 1; } }
+        if (mode === 3 && i === 4){ c = '#F87171'; pulse = 1; }
+        if (mode === 4 && i === 4){ c = '#FBBF24'; pulse = 1; }
+        const L = b.userData.light; L.material.color.lerp(new THREE.Color(c), k); L.material.emissive.lerp(new THREE.Color(c), k); L.material.emissiveIntensity = 0.6 + pulse*0.4*Math.abs(Math.sin(now/180)); });
+      // nurses: in mode 3 they are busy at far beds; in mode 4 one walks to the flagged bed
+      const goals = mode === 3 ? [[-3.6, -1.2], [3.6, 1.2]] : mode === 4 ? [[0, 1.3], [0.8, 0.9]] : [[-0.7, 0.9], [0.8, 0.9]];
+      nurses.forEach((n, i) => { n.position.x += (goals[i][0] - n.position.x)*k*0.5; n.position.z += (goals[i][1] - n.position.z)*k*0.5; });
+      pads.forEach(p => { p.material.opacity += ((mode >= 4 ? 1 : 0) - p.material.opacity)*k; });
+      // the alert screen
+      if (mode === 2) count = Math.min(14, count + dt*2.2); else if (mode === 3) count = Math.min(37, count + dt*4); else if (mode >= 4) count = Math.max(2, count - dt*12); else count = 0;
+      const key = mode + ':' + Math.round(count);
+      if (key !== lastKey && now - lastDraw > 120){ lastKey = key; lastDraw = now;
+        if (mode <= 1) scr.draw('0', 'alerts waiting', '#14532d');
+        else if (mode === 2) scr.draw(String(Math.round(count)), 'alerts today', '#92400e');
+        else if (mode === 3) scr.draw(String(Math.round(count)), 'unread alerts', '#991b1b');
+        else scr.draw(String(Math.round(count)), 'sent to handhelds', '#14532d'); }
+      ghosts.forEach((g, gi) => { const on = mode >= 5; g.W.visible = on || g.W.children[0].material.opacity > 0.02;
+        g.W.traverse(o => { if (o.material) o.material.opacity += ((on ? 0.8 : 0) - o.material.opacity)*k*0.6; }); });
+      gl.material.opacity += ((mode >= 5 ? 1 : 0) - gl.material.opacity)*k;
+    });
+    function step(i){ mode = (spec.steps || [0])[Math.min(i, (spec.steps||[0]).length-1)]; }
+    step(0);
+    return { step, dispose: C.dispose, nSteps: (spec.steps||[0]).length };
+  }
+
+  const TYPES = { graph, flood, train, bars, pixels, clusters, curve, people, chain, stairs, hype, ward };
 
   function mount(stage, spec){
     const title = document.createElement('div'); title.className = 'scene-title'; title.textContent = spec.title || ''; stage.append(title);
@@ -489,5 +568,5 @@
       dispose(){ clearInterval(timer); api.dispose(); title.remove(); }
     };
   }
-  window.Scenes = { mount };
+  window.Scenes = { mount, _kit: { core, label, figure, bed, buildWard, screenTex, shapeMesh, col, COL } };
 })();
